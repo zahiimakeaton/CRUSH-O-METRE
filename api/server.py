@@ -5,13 +5,12 @@ import google.generativeai as genai
 
 app = Flask(__name__)
 
-# Your Gemini API key - set as environment variable or directly replace "YOUR_API_KEY_HERE"
+# Your Gemini API key
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
 genai.configure(api_key=GEMINI_API_KEY)
 
 model = genai.GenerativeModel("gemini-1.5-flash")
 
-# Assets mapping
 ASSETS = {
     "Rizz": {
         "image": "/static/images/rizz.gif",
@@ -58,23 +57,6 @@ You are a witty and fun crush-o-meter AI. Analyze the chat message below and res
 Format your answer like this (without quotes):  
 "<Label> — <Explanation> <Emoji>"
 
-Here are some examples:
-
-Chat message: "I just can’t stop thinking about you, wanna hang out sometime?"  
-Response: Rizz — Smooth moves! You're definitely making her smile 😎
-
-Chat message: "Sorry, I’m really busy, maybe some other time."  
-Response: Bro Zone — Friendly vibes only, no romance here 🤷‍♂️
-
-Chat message: "I think we should just stay friends."  
-Response: Cooked — Ouch, that’s a hard pass 🔥
-
-Chat message: "I’m not sure, maybe we can see how things go?"  
-Response: Maybe-Maybe — Playing it cool, keeping options open 🤔
-
-Chat message: "Will you marry me?"  
-Response: Marry Her — Straight to the point! True love alert 💍
-
 Now analyze this chat message: "{user_text}"
 """
 
@@ -102,5 +84,6 @@ Now analyze this chat message: "{user_text}"
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+def handler(request, *args, **kwargs):
+    return app(request, *args, **kwargs)
+
