@@ -5,7 +5,7 @@ import google.generativeai as genai
 
 app = Flask(__name__)
 
-# Your Gemini API key
+# Gemini API key from environment variable
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
 genai.configure(api_key=GEMINI_API_KEY)
 
@@ -64,26 +64,37 @@ Now analyze this chat message: "{user_text}"
         response = model.generate_content(prompt)
         result_text = response.text.strip()
 
-        label_match = re.match(r"([\w\- ]+)\s*—", result_text)
-        label = label_match.group(1).strip() if label_match else None
-
-        if label not in ASSETS:
-            label = "Maybe-Maybe"
-
-        explanation = result_text.split('—', 1)[1].strip() if '—' in result_text else ""
-
-        asset = ASSETS[label]
-
-        return jsonify({
-            "label": label,
-            "explanation": explanation,
-            "image": asset["image"],
-            "audio": asset["audio"]
-        })
-
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        error_msg = str(e).lower()
+
+       
+        if "quota" in error_msg or "limit" in error_msg:
+            return jsonify({
+                "error": "The AI's daily charm quota is out 💔. Please try again tomorrow!"
+            }), 429
+        
+        # Any other unexpected error
+        return jsonify({
+            "error": f"Unexpected server error: {str(e)}"
+        }), 500
+
+    # Parse the label from Gemini's response
+    label_match = re.match(r"([\w\- ]+)\s*—", result_text)
+    label = label_match.group(1).strip() if label_match else None
+
+    if label not in ASSETS:
+        label = "Maybe-Maybe"
+
+    explanation = result_text.split('—', 1)[1].strip() if '—' in result_text else ""
+    asset = ASSETS[label]
+
+    return jsonify({
+        "label": label,
+        "explanation": explanation,
+        "image": asset["image"],
+        "audio": asset["audio"]
+    })
+
 
 def handler(request, *args, **kwargs):
     return app(request, *args, **kwargs)
-
