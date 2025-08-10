@@ -1,16 +1,18 @@
+
 import re
-import os
 from flask import Flask, request, jsonify, render_template
 import google.generativeai as genai
+import os
 
 app = Flask(__name__)
 
-# Gemini API key from environment variable
+# Your Gemini API key - set as environment variable or directly replace "YOUR_API_KEY_HERE"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
 genai.configure(api_key=GEMINI_API_KEY)
 
 model = genai.GenerativeModel("gemini-1.5-flash")
 
+# Assets mapping
 ASSETS = {
     "Rizz": {
         "image": "/static/images/rizz.gif",
@@ -57,6 +59,25 @@ You are a witty and fun crush-o-meter AI. Analyze the chat message below and res
 Format your answer like this (without quotes):  
 "<Label> — <Explanation> <Emoji>"
 
+Here are some examples:
+
+Chat message: "I just can’t stop thinking about you, wanna hang out sometime?"  
+Response: Rizz — Smooth moves! You're definitely making her smile 😎
+
+Chat message: "Sorry, I’m really busy, maybe some other time."  
+Response: Bro Zone — Friendly vibes only, no romance here 🤷‍♂️
+
+Chat message: "I think we should just stay friends."  
+Response: Cooked — Ouch, that’s a hard pass 🔥
+
+Chat message: "I’m not sure, maybe we can see how things go?"  
+Response: Maybe-Maybe — Playing it cool, keeping options open 🤔
+
+Chat message: "Will you marry me?"  
+Response: Marry Her — Straight to the point! True love alert 💍
+
+
+
 Now analyze this chat message: "{user_text}"
 """
 
@@ -64,41 +85,25 @@ Now analyze this chat message: "{user_text}"
         response = model.generate_content(prompt)
         result_text = response.text.strip()
 
-    except Exception as e:
-        error_msg = str(e).lower()
+        label_match = re.match(r"([\w\- ]+)\s*—", result_text)
+        label = label_match.group(1).strip() if label_match else None
 
-       
-        if "quota" in error_msg or "limit" in error_msg:
-            return jsonify({
-                "error": "The AI's daily charm quota is out 💔. Please try again tomorrow!"
-            }), 429
-        
-        # Any other unexpected error
+        if label not in ASSETS:
+            label = "Maybe-Maybe"
+
+        explanation = result_text.split('—', 1)[1].strip() if '—' in result_text else ""
+
+        asset = ASSETS[label]
+
         return jsonify({
-            "error": f"Unexpected server error: {str(e)}"
-        }), 500
+            "label": label,
+            "explanation": explanation,
+            "image": asset["image"],
+            "audio": asset["audio"]
+        })
 
-    # Parse the label from Gemini's response
-    label_match = re.match(r"([\w\- ]+)\s*—", result_text)
-    label = label_match.group(1).strip() if label_match else None
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    if label not in ASSETS:
-        label = "Maybe-Maybe"
-
-    explanation = result_text.split('—', 1)[1].strip() if '—' in result_text else ""
-    asset = ASSETS[label]
-
-    return jsonify({
-        "label": label,
-        "explanation": explanation,
-        "image": asset["image"],
-        "audio": asset["audio"]
-    })
-
-
-def handler(request, *args, **kwargs):
-    return app(request, *args, **kwargs)
-
-if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
-
+if __name__ == '__main__':
+    app.run(debug=True)
